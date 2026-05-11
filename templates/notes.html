@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}My Notes – AI Study Buddy{% endblock %}
+{% block page_title %}My Notes{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:360px 1fr;gap:1.5rem;align-items:start;">
+
+  <!-- Create note panel -->
+  <div class="card" style="position:sticky;top:72px;">
+    <div class="card-header">
+      <span class="card-title">✨ New Note</span>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Topic</label>
+        <input type="text" class="form-control" id="note-topic" placeholder="e.g. Photosynthesis" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your raw notes</label>
+        <textarea class="form-control" id="note-content" style="min-height:140px;"
+                  placeholder="Paste or type your notes here… AI will summarize them for you."></textarea>
+      </div>
+      <button class="btn btn-primary btn-full" id="note-btn" onclick="createNote()">
+        ✨ Summarize & Save
+      </button>
+      <!-- AI Summary preview -->
+      <div id="summary-preview" style="display:none;margin-top:1rem;padding:.9rem;background:var(--accent-light);border-radius:var(--radius-md);border:1px solid rgba(108,99,255,.2);">
+        <div style="font-size:.75rem;font-weight:600;color:var(--accent);margin-bottom:.4rem;">AI SUMMARY</div>
+        <div id="summary-text" style="font-size:.83rem;color:var(--text-primary);line-height:1.65;white-space:pre-wrap;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes grid -->
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div style="font-size:.875rem;color:var(--text-muted);">{{ notes|length }} note{{ 's' if notes|length != 1 }}</div>
+      <input type="text" class="form-control" id="search-notes" placeholder="Search notes…"
+             oninput="filterNotes()" style="width:200px;padding:.35rem .75rem;font-size:.82rem;" />
+    </div>
+
+    {% if notes %}
+    <div class="grid-2" id="notes-container">
+      {% for note in notes %}
+      <div class="note-card" id="note-{{ note.id }}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;">
+          <div class="note-topic">{{ note.topic }}</div>
+          <button class="btn btn-danger btn-sm" onclick="deleteNote({{ note.id }})" title="Delete">🗑</button>
+        </div>
+        {% if note.summary %}
+        <div class="note-summary">{{ note.summary }}</div>
+        {% else %}
+        <div class="note-summary">{{ note.raw_content[:200] }}{% if note.raw_content|length > 200 %}…{% endif %}</div>
+        {% endif %}
+        <div class="note-date">
+          {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:4rem 2rem;color:var(--text-muted);">
+      <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
+      <div style="font-size:1rem;font-weight:600;margin-bottom:.4rem;">No notes yet</div>
+      <div style="font-size:.875rem;">Create your first note using the panel on the left.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createNote() {
+  const topic   = document.getElementById('note-topic').value.trim();
+  const content = document.getElementById('note-content').value.trim();
+  const btn     = document.getElementById('note-btn');
+  if (!topic || !content) { showToast('Fill in both topic and notes!', 'error'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Summarizing…';
+
+  const res = await postJSON('/api/notes', { topic, content });
+  btn.disabled = false;
+  btn.textContent = '✨ Summarize & Save';
+
+  if (res.ok) {
+    document.getElementById('summary-text').textContent = res.summary;
+    document.getElementById('summary-preview').style.display = 'block';
+    showToast('Note saved!', 'success');
+    document.getElementById('note-topic').value = '';
+    document.getElementById('note-content').value = '';
+    setTimeout(() => location.reload(), 1200);
+  } else {
+    showToast(res.msg || 'Failed to save note', 'error');
+  }
+}
+
+async function deleteNote(nid) {
+  if (!confirm('Delete this note?')) return;
+  const res = await deleteJSON(`/api/notes/${nid}`);
+  if (res.ok) {
+    document.getElementById(`note-${nid}`).remove();
+    showToast('Note deleted', 'info');
+  }
+}
+
+function filterNotes() {
+  const q = document.getElementById('search-notes').value.toLowerCase();
+  document.querySelectorAll('.note-card').forEach(card => {
+    card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

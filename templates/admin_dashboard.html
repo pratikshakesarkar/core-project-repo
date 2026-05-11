@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel – AI Study Buddy{% endblock %}
+{% block page_title %}Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stat-grid mb-6">
+  <div class="stat-card">
+    <div class="stat-icon">👥</div>
+    <div class="stat-label">Total Students</div>
+    <div class="stat-value">{{ user_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📝</div>
+    <div class="stat-label">Notes Created</div>
+    <div class="stat-value">{{ note_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🧠</div>
+    <div class="stat-label">Quizzes Generated</div>
+    <div class="stat-value">{{ quiz_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-label">Quiz Attempts</div>
+    <div class="stat-value">{{ session_count }}</div>
+  </div>
+</div>
+
+<!-- Users table -->
+<div class="card mb-6" id="users-section">
+  <div class="card-header">
+    <span class="card-title">👥 All Students</span>
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <input type="text" class="form-control" id="search-input"
+             placeholder="Search users…" oninput="filterUsers()"
+             style="width:200px;padding:.35rem .75rem;font-size:.82rem;" />
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="users-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th>Notes</th>
+          <th>Quizzes</th>
+          <th>Joined</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr id="user-row-{{ u.id }}">
+          <td>
+            <div style="display:flex;align-items:center;gap:.6rem;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0;">
+                {{ u.username[0].upper() }}
+              </div>
+              <span style="font-weight:500;">{{ u.username }}</span>
+            </div>
+          </td>
+          <td style="color:var(--text-secondary);">{{ u.email }}</td>
+          <td>{{ u.notes }}</td>
+          <td>{{ u.quizzes }}</td>
+          <td style="color:var(--text-muted);font-size:.8rem;">
+            {{ u.created_at.strftime('%b %d, %Y') if u.created_at else '—' }}
+          </td>
+          <td>
+            <span id="status-badge-{{ u.id }}" class="badge badge-{{ 'active' if u.is_active else 'inactive' }}">
+              {{ 'Active' if u.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <div style="display:flex;gap:.4rem;">
+              <button class="btn btn-secondary btn-sm" id="toggle-btn-{{ u.id }}"
+                      onclick="toggleUser({{ u.id }}, {{ 1 if u.is_active else 0 }})">
+                {{ '🔒 Disable' if u.is_active else '✅ Enable' }}
+              </button>
+              <button class="btn btn-danger btn-sm"
+                      onclick="deleteUser({{ u.id }}, '{{ u.username }}')">
+                🗑
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">No students registered yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Quiz Sessions -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">📊 Recent Quiz Activity</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Topic</th>
+          <th>Score</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in recent_sessions %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:#fff;font-weight:700;">
+                {{ s.username[0].upper() }}
+              </div>
+              {{ s.username }}
+            </div>
+          </td>
+          <td>{{ s.topic }}</td>
+          <td>
+            <span style="font-weight:700;color:{% if s.score >= 70 %}var(--success){% elif s.score >= 40 %}var(--warning){% else %}var(--danger){% endif %}">
+              {{ s.score }}%
+            </span>
+          </td>
+          <td style="color:var(--text-muted);font-size:.8rem;">
+            {{ s.taken_at.strftime('%b %d, %Y %H:%M') if s.taken_at else '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No quiz activity yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterUsers() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  document.querySelectorAll('#users-table tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+async function toggleUser(uid, currentlyActive) {
+  const res = await postJSON(`/api/admin/users/${uid}/toggle`, {});
+  if (res.ok) {
+    const badge = document.getElementById(`status-badge-${uid}`);
+    const btn   = document.getElementById(`toggle-btn-${uid}`);
+    if (currentlyActive) {
+      badge.className = 'badge badge-inactive'; badge.textContent = 'Inactive';
+      btn.textContent = '✅ Enable';
+      btn.setAttribute('onclick', `toggleUser(${uid}, 0)`);
+    } else {
+      badge.className = 'badge badge-active'; badge.textContent = 'Active';
+      btn.textContent = '🔒 Disable';
+      btn.setAttribute('onclick', `toggleUser(${uid}, 1)`);
+    }
+    showToast('User status updated', 'success');
+  }
+}
+
+async function deleteUser(uid, name) {
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const res = await deleteJSON(`/api/admin/users/${uid}`);
+  if (res.ok) {
+    document.getElementById(`user-row-${uid}`).remove();
+    showToast(`${name} deleted`, 'info');
+  }
+}
+</script>
+{% endblock %}

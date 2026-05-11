@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register – AI Study Buddy</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  <script>(function(){const t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-orbs">
+      <div class="auth-orb" style="width:400px;height:400px;top:-100px;left:-100px;"></div>
+      <div class="auth-orb" style="width:300px;height:300px;bottom:-80px;right:-80px;"></div>
+    </div>
+    <div class="auth-left-content">
+      <div style="font-size:3.5rem;margin-bottom:1rem">🎓</div>
+      <div class="auth-big-logo">Join StudyBuddy</div>
+      <p class="auth-tagline">Start learning smarter today. AI-powered quizzes and notes tailored just for you.</p>
+    </div>
+  </div>
+
+  <div class="auth-right" style="position:relative;">
+    <button class="theme-toggle auth-theme-btn" title="Toggle theme" aria-label="Toggle theme"></button>
+    <div class="auth-header">
+      <h1>Create an account ✨</h1>
+      <p>Join thousands of students learning smarter</p>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" placeholder="Your name" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email address</label>
+      <input type="email" class="form-control" id="email" placeholder="you@example.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="password" placeholder="Min. 6 characters"
+             onkeydown="if(event.key==='Enter')doRegister()" />
+    </div>
+    <button class="btn btn-primary btn-full" id="reg-btn" onclick="doRegister()">
+      Create account
+    </button>
+    <div class="auth-footer-link">
+      Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+async function doRegister() {
+  const username = document.getElementById('username').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl    = document.getElementById('auth-error');
+  const btn      = document.getElementById('reg-btn');
+
+  if (!username || !email || !password) {
+    errEl.textContent = 'All fields are required.';
+    errEl.style.display = 'block'; return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.style.display = 'block'; return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creating account…';
+
+  const res = await postJSON('/register', { username, email, password });
+  if (res.ok) {
+    showToast('Account created! Please sign in.', 'success');
+    setTimeout(() => window.location.href = '/login', 800);
+  } else {
+    errEl.textContent = res.msg;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Create account';
+  }
+}
+</script>
+</body>
+</html>

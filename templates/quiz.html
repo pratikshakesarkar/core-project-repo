@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Quizzes – AI Study Buddy{% endblock %}
+{% block page_title %}Quizzes{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:320px 1fr;gap:1.5rem;align-items:start;">
+
+  <!-- Generator panel -->
+  <div class="card" style="position:sticky;top:72px;">
+    <div class="card-header"><span class="card-title">🧠 Generate Quiz</span></div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Topic</label>
+        <input type="text" class="form-control" id="q-topic" placeholder="e.g. Newton's Laws" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Number of questions</label>
+        <select class="form-control" id="q-num">
+          <option value="3">3 questions</option>
+          <option value="5" selected>5 questions</option>
+          <option value="10">10 questions</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Difficulty</label>
+        <div style="display:flex;gap:.5rem;">
+          <button class="diff-btn btn btn-secondary btn-sm active-diff" data-diff="easy" onclick="selectDiff('easy')">Easy</button>
+          <button class="diff-btn btn btn-primary btn-sm" data-diff="medium" onclick="selectDiff('medium')">Medium</button>
+          <button class="diff-btn btn btn-secondary btn-sm" data-diff="hard" onclick="selectDiff('hard')">Hard</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="gen-btn" onclick="generateQuiz()">
+        ⚡ Generate
+      </button>
+    </div>
+  </div>
+
+  <!-- Quiz area -->
+  <div>
+    <!-- Active quiz -->
+    <div id="quiz-area" style="display:none;" class="card mb-6">
+      <div class="card-header">
+        <span class="card-title" id="quiz-title">Quiz</span>
+        <span class="badge" id="quiz-diff-badge"></span>
+      </div>
+      <div class="card-body">
+        <div id="questions-container"></div>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitQuiz()" style="margin-top:1rem;">
+          Submit Answers
+        </button>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result-area" style="display:none;" class="card mb-6">
+      <div class="card-body" style="text-align:center;padding:2rem;">
+        <div class="score-ring" id="score-ring" style="margin-bottom:1rem;"></div>
+        <div style="font-family:var(--font-head);font-size:1.3rem;font-weight:800;" id="result-msg"></div>
+        <div style="color:var(--text-secondary);font-size:.875rem;margin-top:.3rem;" id="result-sub"></div>
+        <button class="btn btn-primary" onclick="resetQuiz()" style="margin-top:1.25rem;">🔄 New Quiz</button>
+      </div>
+    </div>
+
+    <!-- Past quizzes -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 My Quizzes</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Topic</th><th>Difficulty</th><th>Questions</th><th>Created</th></tr>
+          </thead>
+          <tbody>
+            {% for q in quizzes %}
+            <tr>
+              <td style="font-weight:500;">{{ q.topic }}</td>
+              <td><span class="badge badge-{{ q.difficulty }}">{{ q.difficulty|capitalize }}</span></td>
+              <td>{{ q.questions|from_json|length if q.questions else '—' }}</td>
+              <td style="color:var(--text-muted);font-size:.8rem;">
+                {{ q.created_at.strftime('%b %d, %Y') if q.created_at else '' }}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No quizzes yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedDiff = 'medium';
+let currentQuizId = null;
+let currentQuestions = [];
+
+function selectDiff(d) {
+  selectedDiff = d;
+  document.querySelectorAll('.diff-btn').forEach(b => {
+    b.className = b.dataset.diff === d
+      ? 'diff-btn btn btn-primary btn-sm'
+      : 'diff-btn btn btn-secondary btn-sm';
+  });
+}
+
+async function generateQuiz() {
+  const topic = document.getElementById('q-topic').value.trim();
+  const num   = document.getElementById('q-num').value;
+  const btn   = document.getElementById('gen-btn');
+  if (!topic) { showToast('Enter a topic!', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating…';
+
+  const res = await postJSON('/api/quiz/generate', { topic, num_questions: num, difficulty: selectedDiff });
+  btn.disabled = false; btn.textContent = '⚡ Generate';
+
+  if (!res.ok) { showToast(res.msg || 'Failed', 'error'); return; }
+
+  currentQuizId = res.quiz_id;
+  currentQuestions = res.questions;
+  renderQuiz(topic);
+}
+
+function renderQuiz(topic) {
+  document.getElementById('quiz-title').textContent = '📝 ' + topic;
+  const badge = document.getElementById('quiz-diff-badge');
+  badge.textContent = selectedDiff; badge.className = `badge badge-${selectedDiff}`;
+
+  const container = document.getElementById('questions-container');
+  container.innerHTML = currentQuestions.map((q, i) => `
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-weight:600;margin-bottom:.6rem;font-size:.95rem;">
+        ${i+1}. ${q.question}
+      </div>
+      ${q.options.map(opt => `
+        <div class="quiz-option" onclick="selectOption(this, ${i})" data-val="${opt[0]}">
+          ${opt}
+        </div>
+      `).join('')}
+      <div id="expl-${i}" style="display:none;font-size:.8rem;color:var(--text-secondary);margin-top:.4rem;padding:.5rem .75rem;background:var(--bg-elevated);border-radius:var(--radius-sm);">
+        💡 ${q.explanation}
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('quiz-area').style.display = '';
+  document.getElementById('result-area').style.display = 'none';
+  document.getElementById('submit-btn').style.display = '';
+}
+
+const answers = {};
+function selectOption(el, qi) {
+  if (answers[qi] && el.classList.contains('selected')) return;
+  el.closest('.quiz-option')?.parentElement
+    ?.querySelectorAll('.quiz-option')
+    ?.forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  answers[qi] = el.dataset.val;
+}
+
+async function submitQuiz() {
+  if (Object.keys(answers).length < currentQuestions.length) {
+    showToast('Answer all questions first!', 'error'); return;
+  }
+  const res = await postJSON(`/api/quiz/${currentQuizId}/submit`, { answers });
+  if (!res.ok) { showToast('Error submitting', 'error'); return; }
+
+  // Show answers
+  currentQuestions.forEach((q, i) => {
+    const opts = document.querySelectorAll(`#questions-container > div:nth-child(${i+1}) .quiz-option`);
+    opts.forEach(opt => {
+      if (opt.dataset.val === q.answer) opt.classList.add('correct');
+      else if (opt.classList.contains('selected')) opt.classList.add('wrong');
+    });
+    document.getElementById(`expl-${i}`).style.display = '';
+  });
+  document.getElementById('submit-btn').style.display = 'none';
+
+  // Show result
+  const ring = document.getElementById('score-ring');
+  renderScoreRing(ring, res.score);
+  const msgs = res.score >= 80 ? '🎉 Excellent!' : res.score >= 60 ? '👍 Good job!' : '📚 Keep studying!';
+  document.getElementById('result-msg').textContent = msgs;
+  document.getElementById('result-sub').textContent = `${res.correct} / ${res.total} correct`;
+  document.getElementById('result-area').style.display = '';
+}
+
+function resetQuiz() {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  currentQuizId = null; currentQuestions = [];
+  document.getElementById('quiz-area').style.display = 'none';
+  document.getElementById('result-area').style.display = 'none';
+}
+</script>
+{% endblock %}

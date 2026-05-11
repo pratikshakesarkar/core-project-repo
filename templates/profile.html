@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Profile – AI Study Buddy{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;margin:0 auto;">
+  <div class="card">
+    <div class="card-header"><span class="card-title">👤 Account Settings</span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:#fff;">
+          {{ user.username[0].upper() }}
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:1.1rem;font-weight:700;">{{ user.username }}</div>
+          <div style="font-size:.85rem;color:var(--text-secondary);">{{ user.email }}</div>
+          <span class="badge badge-{{ user.role }}" style="margin-top:.3rem;">{{ user.role|capitalize }}</span>
+        </div>
+      </div>
+
+      <div id="profile-error" class="auth-error"></div>
+      <div id="profile-success" style="display:none;background:rgba(34,197,94,.08);color:#166534;border:1px solid rgba(34,197,94,.2);border-radius:var(--radius-md);padding:.6rem 1rem;font-size:.85rem;margin-bottom:1rem;"></div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" class="form-control" id="p-username" value="{{ user.username }}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input type="email" class="form-control" value="{{ user.email }}" disabled
+               style="opacity:.6;cursor:not-allowed;" />
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem;margin-bottom:1rem;">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text-muted);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.06em;">Change Password (optional)</div>
+        <div class="form-group">
+          <label class="form-label">New password</label>
+          <input type="password" class="form-control" id="p-new-pw" placeholder="Leave blank to keep current" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm new password</label>
+          <input type="password" class="form-control" id="p-confirm-pw" placeholder="Repeat new password" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="save-btn" onclick="saveProfile()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function saveProfile() {
+  const username = document.getElementById('p-username').value.trim();
+  const newPw    = document.getElementById('p-new-pw').value;
+  const confirm  = document.getElementById('p-confirm-pw').value;
+  const errEl    = document.getElementById('profile-error');
+  const okEl     = document.getElementById('profile-success');
+  const btn      = document.getElementById('save-btn');
+
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if (!username) { errEl.textContent = 'Username cannot be empty.'; errEl.style.display = 'block'; return; }
+  if (newPw && newPw !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; return; }
+  if (newPw && newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  const res = await postJSON('/api/profile', { username, new_password: newPw });
+  btn.disabled = false; btn.textContent = '💾 Save Changes';
+
+  if (res.ok) {
+    okEl.textContent = '✅ Profile updated successfully!';
+    okEl.style.display = 'block';
+    document.getElementById('p-new-pw').value = '';
+    document.getElementById('p-confirm-pw').value = '';
+  } else {
+    errEl.textContent = res.msg || 'Failed to update.';
+    errEl.style.display = 'block';
+  }
+}
+</script>
+{% endblock %}

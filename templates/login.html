@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – AI Study Buddy</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  <script>(function(){const t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="auth-page">
+  <!-- Left panel -->
+  <div class="auth-left">
+    <div class="auth-orbs">
+      <div class="auth-orb" style="width:400px;height:400px;top:-100px;left:-100px;"></div>
+      <div class="auth-orb" style="width:300px;height:300px;bottom:-80px;right:-80px;"></div>
+    </div>
+    <div class="auth-left-content">
+      <div style="font-size:3.5rem;margin-bottom:1rem">📚</div>
+      <div class="auth-big-logo">AI Study Buddy</div>
+      <p class="auth-tagline">Your intelligent study companion — generate quizzes, summarize notes, and track your progress with AI.</p>
+      <div style="margin-top:2rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:.5rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">🧠 AI Quizzes</div>
+        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:.5rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">📝 Smart Notes</div>
+        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:.5rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">📊 Progress</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="auth-right" style="position:relative;">
+    <button class="theme-toggle auth-theme-btn" title="Toggle theme" aria-label="Toggle dark/light mode"></button>
+
+    <div class="auth-header">
+      <h1>Welcome back 👋</h1>
+      <p>Sign in to continue your learning journey</p>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+
+    <!-- Role selector -->
+    <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;background:var(--bg-base);border-radius:var(--radius-md);padding:4px;">
+      <button id="tab-user" onclick="setRoleTab('user')"
+        style="flex:1;padding:.45rem;border:none;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;background:var(--accent);color:#fff;">
+        👤 Student Login
+      </button>
+      <button id="tab-admin" onclick="setRoleTab('admin')"
+        style="flex:1;padding:.45rem;border:none;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--text-secondary);">
+        ⚡ Admin Login
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email address</label>
+      <input type="email" class="form-control" id="email" placeholder="you@example.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="password" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">
+      Sign in
+    </button>
+
+    <div class="auth-footer-link" id="register-link">
+      Don't have an account? <a href="{{ url_for('register') }}">Create one</a>
+    </div>
+
+    <div id="admin-note" style="display:none;margin-top:1rem;padding:.65rem 1rem;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-md);font-size:.78rem;color:var(--text-secondary);">
+      ⚡ Admin accounts are provisioned by the system. Contact your administrator for access.
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+let selectedRole = 'user';
+
+function setRoleTab(role) {
+  selectedRole = role;
+  const u = document.getElementById('tab-user');
+  const a = document.getElementById('tab-admin');
+  const regLink = document.getElementById('register-link');
+  const adminNote = document.getElementById('admin-note');
+  if (role === 'user') {
+    u.style.background = 'var(--accent)'; u.style.color = '#fff';
+    a.style.background = 'transparent'; a.style.color = 'var(--text-secondary)';
+    regLink.style.display = ''; adminNote.style.display = 'none';
+  } else {
+    a.style.background = 'var(--accent)'; a.style.color = '#fff';
+    u.style.background = 'transparent'; u.style.color = 'var(--text-secondary)';
+    regLink.style.display = 'none'; adminNote.style.display = '';
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('login-btn');
+
+  if (!email || !password) {
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.style.display = 'block'; return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing in…';
+
+  try {
+    const res = await postJSON('/login', { email, password });
+    if (res.ok) {
+      showToast('Welcome back!', 'success');
+      setTimeout(() => window.location.href = res.redirect, 400);
+    } else {
+      errEl.textContent = res.msg;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+    }
+  } catch {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+  }
+}
+</script>
+</body>
+</html>

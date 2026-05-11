@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – AI Study Buddy{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon">📝</div>
+    <div class="stat-label">Total Notes</div>
+    <div class="stat-value">{{ note_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🧠</div>
+    <div class="stat-label">Quizzes Taken</div>
+    <div class="stat-value">{{ quiz_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🎯</div>
+    <div class="stat-label">Avg. Score</div>
+    <div class="stat-value">{{ avg_score }}%</div>
+  </div>
+</div>
+
+<!-- Welcome banner -->
+<div class="card mb-6" style="border-left:4px solid var(--accent);background:var(--accent-light);">
+  <div class="card-body" style="padding:1rem 1.25rem;">
+    <div style="font-family:var(--font-head);font-size:1.1rem;font-weight:700;color:var(--accent-dark);">
+      Welcome back, {{ username }}! 👋
+    </div>
+    <p style="font-size:.875rem;color:var(--text-secondary);margin-top:.25rem;">
+      Ready to study? Create notes or take a quiz to keep your streak going.
+    </p>
+    <div style="display:flex;gap:.75rem;margin-top:.75rem;flex-wrap:wrap;">
+      <a href="{{ url_for('notes_page') }}" class="btn btn-primary btn-sm">📝 New Note</a>
+      <a href="{{ url_for('quiz_page') }}" class="btn btn-secondary btn-sm">🧠 Generate Quiz</a>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.5rem;">
+  <!-- Recent Notes -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📝 Recent Notes</span>
+      <a href="{{ url_for('notes_page') }}" class="btn btn-secondary btn-sm">View all</a>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if notes %}
+        {% for note in notes %}
+        <div style="padding:.9rem 1.25rem;border-bottom:1px solid var(--border);{% if loop.last %}border-bottom:none{% endif %}">
+          <div style="font-weight:600;font-size:.875rem;margin-bottom:.2rem;">{{ note.topic }}</div>
+          <div style="font-size:.78rem;color:var(--text-secondary);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
+            {{ note.summary or note.raw_content }}
+          </div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.3rem;">
+            {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+          <div style="font-size:2rem;margin-bottom:.5rem;">📭</div>
+          No notes yet. <a href="{{ url_for('notes_page') }}" style="color:var(--accent);">Create your first one!</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Quick Quiz -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⚡ Quick Quiz</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:.875rem;color:var(--text-secondary);margin-bottom:1rem;">
+        Generate an AI quiz on any topic in seconds.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Topic</label>
+        <input type="text" class="form-control" id="quick-topic" placeholder="e.g. Photosynthesis, World War 2…" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div class="form-group">
+          <label class="form-label">Questions</label>
+          <select class="form-control" id="quick-num">
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Difficulty</label>
+          <select class="form-control" id="quick-diff">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="quick-quiz-btn" onclick="quickQuiz()">
+        🧠 Generate Quiz
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function quickQuiz() {
+  const topic = document.getElementById('quick-topic').value.trim();
+  const num   = document.getElementById('quick-num').value;
+  const diff  = document.getElementById('quick-diff').value;
+  const btn   = document.getElementById('quick-quiz-btn');
+  if (!topic) { showToast('Enter a topic first!', 'error'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating…';
+  const res = await postJSON('/api/quiz/generate', { topic, num_questions: num, difficulty: diff });
+  btn.disabled = false;
+  btn.textContent = '🧠 Generate Quiz';
+  if (res.ok) {
+    showToast('Quiz ready! Go to the Quiz page.', 'success');
+  } else {
+    showToast(res.msg || 'Error generating quiz', 'error');
+  }
+}
+</script>
+{% endblock %}
