@@ -1,1 +1,73 @@
 This is demo setup for github
+where.exe git\
+INFO: Could not find files for the given pattern(s).
+PS D:\WorkSpace\core-project-repo> where.exe git 
+INFO: Could not find files for the given pattern(s).
+PS D:\WorkSpace\core-project-repo> Get-ChildItem "C:\Program Files\Git\bin\git.exe"
+
+
+    Directory: C:\Program Files\Git\bin
+
+
+Mode                 LastWriteTime         Length Name                                                               
+----                 -------------         ------ ----                                                               
+-a----        20-04-2026     17:51          46480 git.exe                                                            
+
+
+PS D:\WorkSpace\core-project-repo> $env:Path += ";C:\Program Files\Git\bin"
+
+PS D:\WorkSpace\core-project-repo> git --version
+git version 2.54.0.windows.1
+
+PS D:\WorkSpace\core-project-repo> git add .
+PS D:\WorkSpace\core-project-repo> git commit -m 
+error: switch `m' requires a value
+PS D:\WorkSpace\core-project-repo> git commit -m "demo"
+Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: unable to auto-detect email address (got 'kesar@PRATIKSHA.(none)')
+
+
+
+PS D:\WorkSpace\core-project-repo>  git config --global user.email "pratikshkesarkar66@gmail.com"
+>>   git config --global user.name "Pratiksha"
+
+
+PS D:\WorkSpace\core-project-repo> git commit -m "demo"                                          
+[main 8cde082] demo                           
+ 1 file changed, 1 insertion(+)
+ create mode 100644 demo.txt
+
+
+
+PS D:\WorkSpace\core-project-repo> git oush                                                      
+git: 'oush' is not a git command. See 'git --help'.
+
+The most similar command is
+        push
+
+
+PS D:\WorkSpace\core-project-repo> git push
+info: please complete authentication in your browser...
+PS D:\WorkSpace\core-project-repo> git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 12 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 305 bytes | 152.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/pratikshakesarkar/core-project-repo.git
+   1a92744..8cde082  main -> main
+
+   
+PS D:\WorkSpace\core-project-repo> 
